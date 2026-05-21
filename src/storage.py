@@ -77,3 +77,30 @@ class CodeInviterStorage:
         with self.connect() as conn:
             conn.executescript(SCHEMA)
 
+    def create_pending_friend_flow(
+        self,
+        *,
+        user_id: str,
+        group_id: str,
+        pool_id: str,
+        verify_token: str,
+        expires_at: str,
+    ) -> int:
+        with self.connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO pending_friend_flows (
+                    user_id, group_id, pool_id, verify_token, expires_at
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, group_id, pool_id, verify_token, expires_at),
+            )
+            return int(cursor.lastrowid)
+
+    def get_pending_friend_flow(self, flow_id: int) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute(
+                "SELECT * FROM pending_friend_flows WHERE id = ?",
+                (flow_id,),
+            ).fetchone()
