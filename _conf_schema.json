@@ -1,0 +1,86 @@
+{
+  "enabled": {
+    "description": "是否启用多码池发码插件。",
+    "type": "bool",
+    "default": true
+  },
+  "admin_users": {
+    "description": "允许执行导入、查询、导出等管理命令的 QQ 号列表。",
+    "type": "list",
+    "default": []
+  },
+  "global_allowed_groups": {
+    "description": "默认允许触发领码流程的 QQ 群号列表。码池可覆盖该配置。",
+    "type": "list",
+    "default": []
+  },
+  "matching": {
+    "description": "触发词匹配规则。",
+    "type": "object",
+    "items": {
+      "trigger_match_mode": {
+        "description": "触发词匹配模式。v1 默认 exact。",
+        "type": "string",
+        "default": "exact"
+      },
+      "enable_regex": {
+        "description": "是否启用正则触发词。v1 默认关闭。",
+        "type": "bool",
+        "default": false
+      }
+    }
+  },
+  "friend_gate": {
+    "description": "好友申请自动审批规则。",
+    "type": "object",
+    "items": {
+      "auto_approve": {
+        "description": "是否在验证通过后自动同意好友申请。",
+        "type": "bool",
+        "default": true
+      },
+      "token_ttl_minutes": {
+        "description": "一次性好友验证 token 有效期。",
+        "type": "int",
+        "default": 30
+      },
+      "token_template": {
+        "description": "好友验证信息模板。",
+        "type": "string",
+        "default": "领码-{token}"
+      }
+    }
+  },
+  "claim_gate": {
+    "description": "私聊领取前置校验规则。",
+    "type": "object",
+    "items": {
+      "require_group_source": {
+        "description": "是否要求用户先在允许群触发领取流程。",
+        "type": "bool",
+        "default": true
+      },
+      "group_source_ttl_hours": {
+        "description": "群来源记录有效期。",
+        "type": "int",
+        "default": 24
+      }
+    }
+  },
+  "csv": {
+    "description": "CSV 导入导出配置。",
+    "type": "object",
+    "items": {
+      "encoding": {
+        "description": "CSV 文件编码。",
+        "type": "string",
+        "default": "utf-8-sig"
+      },
+      "export_dir": {
+        "description": "导出文件目录，位于插件数据目录下。",
+        "type": "string",
+        "default": "exports"
+      }
+    }
+  }
+}
