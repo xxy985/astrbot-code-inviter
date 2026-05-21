@@ -104,3 +104,25 @@ class CodeInviterStorage:
                 "SELECT * FROM pending_friend_flows WHERE id = ?",
                 (flow_id,),
             ).fetchone()
+
+    def find_pending_friend_flow(self, *, user_id: str, verify_token: str) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM pending_friend_flows
+                WHERE user_id = ?
+                  AND verify_token = ?
+                  AND status = 'pending'
+                ORDER BY expires_at DESC, id DESC
+                LIMIT 1
+                """,
+                (user_id, verify_token),
+            ).fetchone()
+
+    def mark_pending_friend_flow_approved(self, flow_id: int) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE pending_friend_flows SET status = 'approved' WHERE id = ?",
+                (flow_id,),
+            )
