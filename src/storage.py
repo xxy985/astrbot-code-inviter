@@ -155,6 +155,19 @@ class CodeInviterStorage:
             ).fetchone()
             return int(row["total"] if row else 0)
 
+    def count_codes_by_status(self, *, pool_id: str) -> dict[str, int]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT status, COUNT(*) AS total
+                FROM codes
+                WHERE pool_id = ?
+                GROUP BY status
+                """,
+                (pool_id,),
+            ).fetchall()
+            return {str(row["status"]): int(row["total"]) for row in rows}
+
     def claim_next_code(
         self,
         *,
@@ -234,3 +247,15 @@ class CodeInviterStorage:
             (pool_id, user_id),
         ).fetchone()
         return int(row["total"] if row else 0)
+
+    def list_claim_records(self, *, pool_id: str) -> list[sqlite3.Row]:
+        with self.connect() as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM claim_records
+                WHERE pool_id = ?
+                ORDER BY claimed_at ASC, id ASC
+                """,
+                (pool_id,),
+            ).fetchall()
