@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from src.config import CodePoolConfig, PluginConfig
 from src.storage import CodeInviterStorage
@@ -42,6 +43,10 @@ class ClaimService:
         if self._is_once_per_user_limit_reached(pool=pool, user_id=user_id_text):
             return ClaimResult(claimed=False, reason="already_claimed", pool_id=pool.pool_id)
 
+        source_group_id = source_group_id or self._resolve_source_group(user_id=user_id_text)
+        if self.config.require_group_source and not source_group_id:
+            return ClaimResult(claimed=False, reason="not_friend_flow", pool_id=pool.pool_id)
+
         record = self.storage.claim_next_code(
             pool_id=pool.pool_id,
             user_id=user_id_text,
@@ -71,3 +76,14 @@ class ClaimService:
             return False
         return self.storage.count_claims_for_user(pool_id=pool.pool_id, user_id=user_id) >= 1
 
+    def _resolve_source_group(self, *, user_id: str) -> str:
+        flow = self.storage.find_latest_approved_flow(user_id=user_id)
+        if flow is None:
+            return ""
+        expires_at = datetime.fromisoformat(str(flow["expires_at"]))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        claim_source_deadline = datetime.now(UTC) - timedelta(hours=self.config.group_source_ttl_hours)
+        if expires_at < claim_source_deadline:
+            return ""
+        return str(flow["group_id"])

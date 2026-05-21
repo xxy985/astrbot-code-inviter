@@ -127,6 +127,20 @@ class CodeInviterStorage:
                 (flow_id,),
             )
 
+    def find_latest_approved_flow(self, *, user_id: str) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute(
+                """
+                SELECT *
+                FROM pending_friend_flows
+                WHERE user_id = ?
+                  AND status = 'approved'
+                ORDER BY expires_at DESC, id DESC
+                LIMIT 1
+                """,
+                (user_id,),
+            ).fetchone()
+
     def add_code(self, *, pool_id: str, code: str, batch: str = "", remark: str = "") -> bool:
         with self.connect() as conn:
             try:

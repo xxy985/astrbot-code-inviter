@@ -13,6 +13,7 @@ def test_private_claim_sends_one_unused_code(tmp_path):
                     "claim_policy": {"mode": "once_per_user"},
                 }
             },
+            "claim_gate": {"require_group_source": False},
         }
     )
     storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
@@ -41,6 +42,7 @@ def test_once_per_user_rejects_second_claim(tmp_path):
                     "claim_policy": {"mode": "once_per_user"},
                 }
             },
+            "claim_gate": {"require_group_source": False},
         }
     )
     storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
@@ -56,3 +58,28 @@ def test_once_per_user_rejects_second_claim(tmp_path):
     assert second.claimed is False
     assert second.reason == "already_claimed"
 
+
+def test_private_claim_requires_approved_source_flow(tmp_path):
+    config = parse_plugin_config(
+        {
+            "claim_gate": {"require_group_source": True},
+            "code_pools": {
+                "invite": {
+                    "display_name": "邀请码",
+                    "private_triggers": ["领取邀请码"],
+                    "claim_policy": {"mode": "once_per_user"},
+                }
+            },
+        }
+    )
+    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage.initialize()
+    storage.add_code(pool_id="invite", code="CODE001")
+
+    result = ClaimService(config, storage).handle_private_message(
+        user_id=1,
+        message="领取邀请码",
+    )
+
+    assert result.claimed is False
+    assert result.reason == "not_friend_flow"

@@ -38,6 +38,7 @@ class PluginConfig:
     global_allowed_groups: list[int] = field(default_factory=list)
     token_ttl_minutes: int = 30
     token_template: str = "领码-{token}"
+    require_group_source: bool = True
     group_source_ttl_hours: int = 24
     csv_encoding: str = "utf-8-sig"
     export_dir: str = "exports"
@@ -62,6 +63,7 @@ def parse_plugin_config(raw: dict[str, Any]) -> PluginConfig:
         global_allowed_groups=_int_list(raw.get("global_allowed_groups", [])),
         token_ttl_minutes=int(friend_gate.get("token_ttl_minutes", 30)),
         token_template=str(friend_gate.get("token_template", "领码-{token}")),
+        require_group_source=bool(claim_gate.get("require_group_source", True)),
         group_source_ttl_hours=int(claim_gate.get("group_source_ttl_hours", 24)),
         csv_encoding=str(csv_config.get("encoding", "utf-8-sig")),
         export_dir=str(csv_config.get("export_dir", "exports")),
@@ -94,4 +96,3 @@ def _parse_claim_policy(raw: dict[str, Any]) -> ClaimPolicy:
 
 def _int_list(value: Any) -> list[int]:
     return [int(item) for item in value or []]
-
