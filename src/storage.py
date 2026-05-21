@@ -126,3 +126,111 @@ class CodeInviterStorage:
                 "UPDATE pending_friend_flows SET status = 'approved' WHERE id = ?",
                 (flow_id,),
             )
+
+    def add_code(self, *, pool_id: str, code: str, batch: str = "", remark: str = "") -> bool:
+        with self.connect() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO codes (pool_id, code, batch, remark)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (pool_id, code, batch, remark),
+                )
+            except sqlite3.IntegrityError:
+                return False
+            return True
+
+    def count_claims_for_user(self, *, pool_id: str, user_id: str) -> int:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM claim_records
+                WHERE pool_id = ?
+                  AND user_id = ?
+                  AND status = 'success'
+                """,
+                (pool_id, user_id),
+            ).fetchone()
+            return int(row["total"] if row else 0)
+
+    def claim_next_code(
+        self,
+        *,
+        pool_id: str,
+        user_id: str,
+        user_nickname: str = "",
+        source_group_id: str = "",
+        source_group_name: str = "",
+    ) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            code_row = conn.execute(
+                """
+                SELECT *
+                FROM codes
+                WHERE pool_id = ?
+                  AND status = 'unused'
+                ORDER BY id ASC
+                LIMIT 1
+                """,
+                (pool_id,),
+            ).fetchone()
+            if code_row is None:
+                return None
+
+            claim_index = self._count_claims_for_user_in_conn(conn, pool_id=pool_id, user_id=user_id) + 1
+            conn.execute(
+                """
+                UPDATE codes
+                SET status = 'claimed',
+                    claimed_at = CURRENT_TIMESTAMP,
+                    claimed_by = ?
+                WHERE id = ?
+                """,
+                (user_id, int(code_row["id"])),
+            )
+            cursor = conn.execute(
+                """
+                INSERT INTO claim_records (
+                    pool_id, code_id, code, user_id, user_nickname,
+                    source_group_id, source_group_name, claim_index_for_user
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    pool_id,
+                    int(code_row["id"]),
+                    str(code_row["code"]),
+                    user_id,
+                    user_nickname,
+                    source_group_id,
+                    source_group_name,
+                    claim_index,
+                ),
+            )
+            record_id = int(cursor.lastrowid)
+            return conn.execute(
+                "SELECT * FROM claim_records WHERE id = ?",
+                (record_id,),
+            ).fetchone()
+
+    def _count_claims_for_user_in_conn(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        pool_id: str,
+        user_id: str,
+    ) -> int:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM claim_records
+            WHERE pool_id = ?
+              AND user_id = ?
+              AND status = 'success'
+            """,
+            (pool_id, user_id),
+        ).fetchone()
+        return int(row["total"] if row else 0)
