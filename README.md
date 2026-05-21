@@ -2,7 +2,9 @@
 
 AstrBot 多码池加好友发码插件项目。
 
-本仓库用于承载 `astrbot_plugin_code_inviter` 的后续开发。目标是在 AstrBot + NapCat / OneBot 11 场景下，通过群触发、一次性好友验证 token、私聊领取和管理员导入导出能力，实现多码池邀请码 / 兑换码发放。
+本仓库用于承载 `astrbot_plugin_code_inviter` 的后续开发。目标是在 AstrBot 中通过 NapCat 接入机器人后，通过群触发、一次性好友验证 token、私聊领取和管理员导入导出能力，实现多码池邀请码 / 兑换码发放。
+
+本项目只处理 AstrBot 插件这一条线，不涉及其他平台、其他接入层或额外中间服务。
 
 ## 当前状态
 

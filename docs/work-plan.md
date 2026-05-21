@@ -37,12 +37,12 @@
 7. 验证和收口
    - 增加单元测试和必要的集成测试。
    - 补充安装说明、配置示例和常见问题。
-   - 进行手动 AstrBot / NapCat 环境验证。
+   - 进行手动 AstrBot + NapCat 环境验证。
 
 ## 本轮不做
 
 - 不实现完整插件业务逻辑。
-- 不连接真实 AstrBot / NapCat 实例。
+- 不连接真实 AstrBot / NapCat 实例，也不扩展到其他平台或接入层。
 - 不上传本地 Trellis / Codex / agent 工作流文件。
 
 ## 验证标准
