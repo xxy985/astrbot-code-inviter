@@ -1,0 +1,10 @@
+name: astrbot_plugin_code_inviter
+display_name: 多码池加好友发码
+short_desc: 通过群触发、好友验证和私聊领取发放多码池邀请码或兑换码。
+desc: AstrBot 多码池加好友发码插件。
+version: 0.0.1
+author: xxy985
+repo: https://github.com/xxy985/astrbot-code-inviter
+support_platforms:
+  - aiocqhttp
+astrbot_version: ">=4.16,<5"

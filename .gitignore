@@ -1,0 +1,38 @@
+# Local workflow artifacts
+.trellis/
+.agents/
+.codex/
+AGENTS.md
+codex-subagent.md
+
+# Local staging artifacts
+astrbot-code-inviter-prd.md
+bidirectional-align.zip
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# AstrBot / plugin runtime data
+data/
+exports/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
