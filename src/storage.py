@@ -182,6 +182,17 @@ class CodeInviterStorage:
             ).fetchall()
             return {str(row["status"]): int(row["total"]) for row in rows}
 
+    def list_pool_ids(self) -> list[str]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT pool_id
+                FROM codes
+                ORDER BY pool_id ASC
+                """
+            ).fetchall()
+            return [str(row["pool_id"]) for row in rows]
+
     def claim_next_code(
         self,
         *,
@@ -270,34 +281,36 @@ class CodeInviterStorage:
         claimed_before: str = "",
     ) -> list[sqlite3.Row]:
         with self.connect() as conn:
-            where = ["pool_id = ?"]
+            where = ["claim_records.pool_id = ?"]
             params: list[str] = [pool_id]
             if claimed_after:
-                where.append("claimed_at >= ?")
+                where.append("claim_records.claimed_at >= ?")
                 params.append(claimed_after)
             if claimed_before:
-                where.append("claimed_at <= ?")
+                where.append("claim_records.claimed_at <= ?")
                 params.append(claimed_before)
             sql = f"""
-                SELECT *
+                SELECT claim_records.*, codes.batch AS batch
                 FROM claim_records
+                LEFT JOIN codes ON codes.id = claim_records.code_id
                 WHERE {' AND '.join(where)}
-                ORDER BY claimed_at ASC, id ASC
+                ORDER BY claim_records.claimed_at ASC, claim_records.id ASC
             """
             return conn.execute(sql, params).fetchall()
 
     def list_claim_records_by_user(self, *, user_id: str, pool_id: str = "") -> list[sqlite3.Row]:
         with self.connect() as conn:
-            where = ["user_id = ?"]
+            where = ["claim_records.user_id = ?"]
             params: list[str] = [user_id]
             if pool_id:
-                where.append("pool_id = ?")
+                where.append("claim_records.pool_id = ?")
                 params.append(pool_id)
             sql = f"""
-                SELECT *
+                SELECT claim_records.*, codes.batch AS batch
                 FROM claim_records
+                LEFT JOIN codes ON codes.id = claim_records.code_id
                 WHERE {' AND '.join(where)}
-                ORDER BY claimed_at DESC, id DESC
+                ORDER BY claim_records.claimed_at DESC, claim_records.id DESC
             """
             return conn.execute(sql, params).fetchall()
 
