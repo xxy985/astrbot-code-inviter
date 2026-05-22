@@ -262,14 +262,70 @@ class CodeInviterStorage:
         ).fetchone()
         return int(row["total"] if row else 0)
 
-    def list_claim_records(self, *, pool_id: str) -> list[sqlite3.Row]:
+    def list_claim_records(
+        self,
+        *,
+        pool_id: str,
+        claimed_after: str = "",
+        claimed_before: str = "",
+    ) -> list[sqlite3.Row]:
         with self.connect() as conn:
-            return conn.execute(
-                """
+            where = ["pool_id = ?"]
+            params: list[str] = [pool_id]
+            if claimed_after:
+                where.append("claimed_at >= ?")
+                params.append(claimed_after)
+            if claimed_before:
+                where.append("claimed_at <= ?")
+                params.append(claimed_before)
+            sql = f"""
                 SELECT *
                 FROM claim_records
-                WHERE pool_id = ?
+                WHERE {' AND '.join(where)}
                 ORDER BY claimed_at ASC, id ASC
+            """
+            return conn.execute(sql, params).fetchall()
+
+    def list_claim_records_by_user(self, *, user_id: str, pool_id: str = "") -> list[sqlite3.Row]:
+        with self.connect() as conn:
+            where = ["user_id = ?"]
+            params: list[str] = [user_id]
+            if pool_id:
+                where.append("pool_id = ?")
+                params.append(pool_id)
+            sql = f"""
+                SELECT *
+                FROM claim_records
+                WHERE {' AND '.join(where)}
+                ORDER BY claimed_at DESC, id DESC
+            """
+            return conn.execute(sql, params).fetchall()
+
+    def upsert_blocked_user(self, *, user_id: str, reason: str, created_by: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO blocked_users (user_id, reason, created_by)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    reason = excluded.reason,
+                    created_by = excluded.created_by,
+                    created_at = CURRENT_TIMESTAMP
                 """,
-                (pool_id,),
-            ).fetchall()
+                (user_id, reason, created_by),
+            )
+
+    def remove_blocked_user(self, *, user_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "DELETE FROM blocked_users WHERE user_id = ?",
+                (user_id,),
+            )
+
+    def is_blocked_user(self, *, user_id: str) -> bool:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM blocked_users WHERE user_id = ? LIMIT 1",
+                (user_id,),
+            ).fetchone()
+            return row is not None
