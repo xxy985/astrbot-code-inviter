@@ -99,6 +99,18 @@ class AstrBotCodeInviterPlugin(Star):
         records = self.admin_service.query_user_claims(user_id=user_id, pool_id=pool_id)
         yield event.plain_result(self.command_views.claim_records(records))
 
+    @filter.command("发码统计")
+    async def command_statistics(self, event: AstrMessageEvent, pool_id: str = ""):
+        if not self._is_plugin_admin(event):
+            yield event.plain_result("无权限执行该命令。")
+            return
+        stats = self.admin_service.statistics(pool_id=pool_id)
+        yield event.plain_result(
+            "库存统计："
+            f"unused={stats['unused']} claimed={stats['claimed']} "
+            f"disabled={stats['disabled']} claim_records={stats['claim_records']}"
+        )
+
     @filter.command("导入码")
     async def command_import_codes(self, event: AstrMessageEvent):
         if not self._is_plugin_admin(event):
@@ -161,6 +173,14 @@ class AstrBotCodeInviterPlugin(Star):
             return
         self.admin_service.unblock_user(user_id=user_id)
         yield event.plain_result(f"已解除用户 {user_id} 的禁领状态。")
+
+    @filter.command("重置领取")
+    async def command_reset_claims(self, event: AstrMessageEvent, pool_id: str, user_id: str):
+        if not self._is_plugin_admin(event):
+            yield event.plain_result("无权限执行该命令。")
+            return
+        count = self.admin_service.reset_user_claims(pool_id=pool_id, user_id=user_id)
+        yield event.plain_result(f"已重置 {user_id} 在 {pool_id} 的 {count} 条领取记录。")
 
     def handle_group_trigger(self, *, user_id: int, group_id: int, message: str) -> dict[str, str | bool]:
         """Process a group trigger message."""

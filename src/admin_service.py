@@ -91,6 +91,21 @@ class AdminService:
             "disabled": counts.get("disabled", 0),
         }
 
+    def statistics(self, *, pool_id: str = "") -> dict[str, int]:
+        pool_ids = [pool_id] if pool_id else self.storage.list_pool_ids()
+        unused = claimed = disabled = 0
+        for current_pool_id in pool_ids:
+            counts = self.inventory(pool_id=current_pool_id)
+            unused += counts["unused"]
+            claimed += counts["claimed"]
+            disabled += counts["disabled"]
+        return {
+            "unused": unused,
+            "claimed": claimed,
+            "disabled": disabled,
+            "claim_records": self.storage.count_claim_records(pool_id=pool_id),
+        }
+
     def query_user_claims(self, *, user_id: str, pool_id: str = "") -> list[ClaimRecordSummary]:
         rows = self.storage.list_claim_records_by_user(user_id=user_id, pool_id=pool_id)
         return [self._claim_record_summary(row) for row in rows]
@@ -100,6 +115,9 @@ class AdminService:
 
     def unblock_user(self, *, user_id: str) -> None:
         self.storage.remove_blocked_user(user_id=user_id)
+
+    def reset_user_claims(self, *, pool_id: str, user_id: str) -> int:
+        return self.storage.reset_user_claims(pool_id=pool_id, user_id=user_id)
 
     def export_claim_records(
         self,

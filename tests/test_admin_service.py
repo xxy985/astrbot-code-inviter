@@ -97,6 +97,38 @@ def test_block_and_unblock_user(tmp_path):
     assert storage.is_blocked_user(user_id="123") is False
 
 
+def test_statistics_counts_inventory_and_claim_records(tmp_path):
+    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage.initialize()
+    storage.add_code(pool_id="invite", code="CODE001")
+    storage.add_code(pool_id="invite", code="CODE002")
+    storage.claim_next_code(pool_id="invite", user_id="123")
+    service = AdminService(storage=storage, export_dir=tmp_path / "exports")
+
+    stats = service.statistics(pool_id="invite")
+
+    assert stats == {
+        "unused": 1,
+        "claimed": 1,
+        "disabled": 0,
+        "claim_records": 1,
+    }
+
+
+def test_reset_user_claims_revokes_records_and_returns_code(tmp_path):
+    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage.initialize()
+    storage.add_code(pool_id="invite", code="CODE001")
+    storage.claim_next_code(pool_id="invite", user_id="123")
+    service = AdminService(storage=storage, export_dir=tmp_path / "exports")
+
+    reset_count = service.reset_user_claims(pool_id="invite", user_id="123")
+
+    assert reset_count == 1
+    assert service.inventory(pool_id="invite")["unused"] == 1
+    assert storage.count_claims_for_user(pool_id="invite", user_id="123") == 0
+
+
 def test_export_claim_records_filters_date_range(tmp_path):
     storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
     storage.initialize()

@@ -182,6 +182,28 @@ class CodeInviterStorage:
             ).fetchall()
             return {str(row["status"]): int(row["total"]) for row in rows}
 
+    def count_claim_records(self, *, pool_id: str = "") -> int:
+        with self.connect() as conn:
+            if pool_id:
+                row = conn.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM claim_records
+                    WHERE pool_id = ?
+                      AND status = 'success'
+                    """,
+                    (pool_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM claim_records
+                    WHERE status = 'success'
+                    """
+                ).fetchone()
+            return int(row["total"] if row else 0)
+
     def list_pool_ids(self) -> list[str]:
         with self.connect() as conn:
             rows = conn.execute(
@@ -342,3 +364,41 @@ class CodeInviterStorage:
                 (user_id,),
             ).fetchone()
             return row is not None
+
+    def reset_user_claims(self, *, pool_id: str, user_id: str) -> int:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT code_id
+                FROM claim_records
+                WHERE pool_id = ?
+                  AND user_id = ?
+                  AND status = 'success'
+                """,
+                (pool_id, user_id),
+            ).fetchall()
+            if not rows:
+                return 0
+            code_ids = [int(row["code_id"]) for row in rows]
+            placeholders = ", ".join("?" for _ in code_ids)
+            conn.execute(
+                f"""
+                UPDATE codes
+                SET status = 'unused',
+                    claimed_at = NULL,
+                    claimed_by = NULL
+                WHERE id IN ({placeholders})
+                """,
+                code_ids,
+            )
+            conn.execute(
+                """
+                UPDATE claim_records
+                SET status = 'revoked'
+                WHERE pool_id = ?
+                  AND user_id = ?
+                  AND status = 'success'
+                """,
+                (pool_id, user_id),
+            )
+            return len(rows)
