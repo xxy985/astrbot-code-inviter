@@ -48,11 +48,11 @@ CODE002
 
 群消息和私聊消息通过 AstrBot 的消息事件进入插件；NapCat 作为 AstrBot 的 OneBot 连接层，不需要额外中间服务。
 
-好友申请审批的业务判断已在 `src/friend_service.py` 和 `main.py::handle_friend_request` 中实现。不同 AstrBot / NapCat 版本暴露好友申请事件和同意申请动作的接口可能不同，部署时需要在真实 AstrBot + NapCat 环境中把对应事件参数传给 `handle_friend_request`，并在 `approved=True` 时调用 AstrBot / NapCat 的同意好友申请能力。
+好友申请审批通过 AstrBot 的 `OTHER_MESSAGE` 事件接入 OneBot request 原始事件；当 `request_type=friend` 且 token 校验通过时，插件会调用 aiocqhttp / NapCat 的 `set_friend_add_request` 动作同意申请。
 
 ## 本地验证
 
-当前本地环境没有安装 AstrBot 运行时，因此单元测试覆盖业务逻辑和薄适配层，真机验证需要在 AstrBot + NapCat 实例中完成。
+当前本地环境没有安装 AstrBot 运行时，因此单元测试覆盖业务逻辑、OneBot 好友申请适配 helper 和薄适配层；最终仍需要在 AstrBot + NapCat 实例中做一次端到端验证。
 
 ```powershell
 python -B -m pytest -p no:cacheprovider tests

@@ -46,7 +46,7 @@
 
 ## 当前剩余真机验证点
 
-- 好友申请审批的业务决策已经实现，但不同 AstrBot / NapCat 版本暴露好友申请事件和同意申请动作的接口可能不同；需要在真实 AstrBot + NapCat 环境中接入 `handle_friend_request` 并验证自动同意动作。
+- 好友申请审批已按 AstrBot aiocqhttp 适配器的 OneBot request raw event 接入，并在校验通过后调用 `set_friend_add_request`；仍需要在真实 AstrBot + NapCat 环境中验证端到端事件字段和自动同意动作。
 - 本地测试覆盖业务逻辑和消息 / 命令适配；最终上线前仍需手动验证群消息、私聊消息、管理员命令和好友申请事件。
 
 ## 验证标准

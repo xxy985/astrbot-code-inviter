@@ -14,6 +14,10 @@ from src.claim_service import ClaimService
 from src.command_views import CommandViews
 from src.config import parse_plugin_config
 from src.friend_service import FriendApprovalService
+from src.friend_request_adapter import (
+    approve_onebot_friend_request,
+    extract_onebot_friend_request,
+)
 from src.handlers import PluginHandlers
 from src.storage import CodeInviterStorage
 from src.trigger_service import GroupTriggerService
@@ -73,6 +77,24 @@ class AstrBotCodeInviterPlugin(Star):
             return
         event.stop_event()
         yield event.plain_result(self.command_views.claim_reply(result))
+
+    @filter.event_message_type(filter.EventMessageType.OTHER_MESSAGE)
+    async def on_other_message(self, event: AstrMessageEvent):
+        payload = extract_onebot_friend_request(event)
+        if payload is None:
+            return
+        result = self.handle_friend_request(user_id=payload.user_id, comment=payload.comment)
+        if result["approved"]:
+            approved = await approve_onebot_friend_request(event, flag=payload.flag)
+            if approved:
+                logger.info(f"{self.name} approved friend request for user {payload.user_id}.")
+            else:
+                logger.warning(f"{self.name} could not access OneBot friend approval API.")
+        else:
+            logger.info(
+                f"{self.name} rejected friend request for user {payload.user_id}: {result['reason']}."
+            )
+        event.stop_event()
 
     @filter.command("发码库存")
     async def command_inventory(self, event: AstrMessageEvent, pool_id: str = ""):
