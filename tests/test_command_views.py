@@ -27,8 +27,17 @@ def test_command_views_render_claim_success_with_pool_name():
 
 def test_command_views_parse_import_text_payload():
     payload = CommandViews(parse_plugin_config({})).parse_import_text(
-        "/导入码 invite\nCODE001\n\nCODE002"
+        "@导入码 invite\nCODE001\n\nCODE002"
     )
 
     assert payload.pool_id == "invite"
     assert payload.lines == ["CODE001", "CODE002"]
+
+
+def test_command_views_parse_import_text_payload_with_chinese_colon():
+    payload = CommandViews(parse_plugin_config({})).parse_import_text(
+        "@导入码：invite\nCODE001"
+    )
+
+    assert payload.pool_id == "invite"
+    assert payload.lines == ["CODE001"]

@@ -1,4 +1,6 @@
 from src.config import parse_plugin_config
+import json
+from pathlib import Path
 
 
 def test_parse_multi_pool_config():
@@ -53,6 +55,20 @@ def test_parse_trigger_takeover_config():
     assert config.bot_aliases == ["秋秋", "bot"]
     assert config.admin_commands.inventory == ["库存", "全部库存"]
     assert config.admin_commands.statistics == ["统计"]
-    assert config.admin_commands.query_claims == ["查领取", "/查领取"]
+    assert config.admin_commands.query_claims == ["记录", "查领取"]
+    assert config.admin_commands.pool_admin == ["码池"]
+    assert config.admin_commands.trigger_admin == ["触发词"]
     assert config.pools["invite"].group_triggers == ["群领"]
     assert config.pools["redeem"].private_triggers == ["兑换私领"]
+
+
+def test_conf_schema_documents_at_commands_and_time_units():
+    schema = json.loads(Path("_conf_schema.json").read_text(encoding="utf-8"))
+
+    assert "@命令词" in schema["admin_commands"]["description"]
+    assert schema["admin_commands"]["items"]["inventory"]["default"] == ["库存", "发码库存", "全部库存"]
+    assert "单位：分钟" in schema["friend_gate"]["items"]["token_ttl_minutes"]["description"]
+    assert "单位：小时" in schema["claim_gate"]["items"]["group_source_ttl_hours"]["description"]
+    policy_items = schema["code_pools"]["items"]["example"]["items"]["claim_policy"]["items"]
+    assert "单位：秒" in policy_items["cooldown_seconds"]["description"]
+    assert "单位：次" in policy_items["period_limit"]["description"]

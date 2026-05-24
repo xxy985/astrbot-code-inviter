@@ -37,6 +37,12 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
+*.sqlite3-journal
+*.sqlite-wal
+*.sqlite3-wal
+*.sqlite-shm
+*.sqlite3-shm
 
 # OS / editor noise
 .DS_Store

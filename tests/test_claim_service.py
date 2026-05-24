@@ -16,7 +16,7 @@ def test_private_claim_sends_one_unused_code(tmp_path):
             "claim_gate": {"require_group_source": False},
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     assert storage.add_code(pool_id="invite", code="CODE001") is True
     assert storage.add_code(pool_id="invite", code="CODE002") is True
@@ -45,7 +45,7 @@ def test_once_per_user_rejects_second_claim(tmp_path):
             "claim_gate": {"require_group_source": False},
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.add_code(pool_id="invite", code="CODE002")
@@ -72,7 +72,7 @@ def test_private_claim_requires_approved_source_flow(tmp_path):
             },
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
 
@@ -97,7 +97,7 @@ def test_private_claim_rejects_blocked_user(tmp_path):
             },
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.upsert_blocked_user(user_id="1", reason="abuse", created_by="admin")
@@ -128,7 +128,7 @@ def test_limited_per_user_rejects_after_configured_limit(tmp_path):
             },
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     for code in ["CODE001", "CODE002", "CODE003"]:
         storage.add_code(pool_id="invite", code=code)

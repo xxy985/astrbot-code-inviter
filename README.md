@@ -16,33 +16,76 @@ AstrBot 多码池加好友发码插件项目。
 
 - `metadata.yaml` 和 `main.py` 提供 AstrBot 插件入口。
 - `_conf_schema.json` 提供后台配置 schema。
-- 群聊精确触发词生成一次性好友验证 token。
-- 私聊精确触发词按码池发放一个未使用码。
+- 只有预设好的 `@命令词` 会进入插件状态机；裸文本和未知 `@xxx` 交由 AstrBot 原流程处理。
+- 群聊 `@` 精确触发词生成一次性好友验证 token。
+- 私聊 `@` 精确触发词按码池发放一个未使用码。
 - SQLite 记录码、领取记录、待好友流程和禁领用户。
-- 管理员可执行库存查询、文本导入、CSV 导入、领取记录查询、CSV 导出、禁领和解禁。
+- 管理员可执行库存查询、文本导入、CSV 导入、领取记录查询、CSV 导出、禁领、解禁、码池管理和触发词管理。
 - 领取规则已覆盖 `once_per_user`、`limited_per_user`、`limited_per_period` 和冷却时间。
+
+## 触发规则
+
+插件只接管白名单内的 `@命令词`。
+
+```text
+@领邀请码
+@领取邀请码
+@库存
+@导入码 invite
+@码池
+@触发词 invite
+```
+
+不会接管：
+
+```text
+领邀请码
+导入码：123test
+@天气
+@随便问问
+```
+
+码池触发词配置中不要写 `@`；实际发送时必须带 `@`。例如配置 `领邀请码` 后，用户输入 `@领邀请码` 才会进入插件流程。
 
 ## 管理命令
 
 ```text
-/发码库存
-/发码库存 invite
-/发码统计
-/发码统计 invite
-/导入码 invite
+@库存
+@库存 invite
+@统计
+@统计 invite
+@导入码 invite
 CODE001
 CODE002
-/导入csv invite D:\path\codes.csv
-/查领取 123456789
-/查领取 123456789 invite
-/导出领取记录 invite
-/导出领取记录 invite 2026-05-01 2026-05-21
-/重置领取 invite 123456789
-/禁领 123456789
-/解禁 123456789
+@导入csv invite D:\path\codes.csv
+@记录 123456789
+@记录 123456789 invite
+@导出领取记录 invite
+@导出领取记录 invite 2026-05-01 2026-05-21
+@重置领取 invite 123456789
+@禁领 123456789
+@解禁 123456789
+@码池
+@码池新增 beta 测试池
+@码池修改 beta 新展示名
+@码池禁用 beta
+@码池启用 beta
+@码池删除 beta
+@触发词 invite
+@触发词 invite 群 领邀请码,我要邀请码
+@触发词 invite 私 领取邀请码
 ```
 
 管理员命令只允许 `admin_users` 中的 QQ 号执行。
+非管理员发送已预设的管理命令时，插件仍会接管并返回权限失败；未预设的 `@xxx` 不会接管。
+
+## 时间单位
+
+- `friend_gate.token_ttl_minutes`：一次性好友验证 token 有效期，单位：分钟。
+- `claim_gate.group_source_ttl_hours`：群来源记录有效期，单位：小时。
+- `claim_policy.cooldown_seconds`：同一用户两次领取之间的冷却时间，单位：秒。
+- `claim_policy.period`：周期限制单位，可选 `none`、`day`、`week`、`month`。
+- `claim_policy.period_limit`：每个周期领取上限，单位：次。
 
 ## AstrBot / NapCat 接入说明
 

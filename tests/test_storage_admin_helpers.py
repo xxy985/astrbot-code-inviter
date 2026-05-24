@@ -2,7 +2,7 @@ from src.storage import CodeInviterStorage
 
 
 def test_storage_lists_claim_records_by_user(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.claim_next_code(pool_id="invite", user_id="123", user_nickname="tester")
@@ -15,7 +15,7 @@ def test_storage_lists_claim_records_by_user(tmp_path):
 
 
 def test_storage_can_block_and_unblock_user(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
 
     storage.upsert_blocked_user(user_id="123", reason="abuse", created_by="admin")
@@ -26,7 +26,7 @@ def test_storage_can_block_and_unblock_user(tmp_path):
 
 
 def test_storage_resets_user_claims(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.claim_next_code(pool_id="invite", user_id="123")

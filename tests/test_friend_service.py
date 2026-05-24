@@ -7,7 +7,7 @@ from src.storage import CodeInviterStorage
 
 def test_friend_request_approves_matching_token(tmp_path):
     config = parse_plugin_config({"friend_gate": {"token_template": "领码-{token}"}})
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     flow_id = storage.create_pending_friend_flow(
         user_id="1",
@@ -32,7 +32,7 @@ def test_friend_request_approves_matching_token(tmp_path):
 
 def test_friend_request_rejects_expired_token(tmp_path):
     config = parse_plugin_config({"friend_gate": {"token_template": "领码-{token}"}})
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.create_pending_friend_flow(
         user_id="1",
@@ -49,4 +49,3 @@ def test_friend_request_rejects_expired_token(tmp_path):
 
     assert decision.approved is False
     assert decision.reason == "token_expired"
-

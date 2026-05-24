@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 
 SCHEMA = """
@@ -52,6 +55,22 @@ CREATE TABLE IF NOT EXISTS blocked_users (
     created_by TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS code_pools (
+    pool_id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS code_pool_triggers (
+    pool_id TEXT NOT NULL,
+    trigger_type TEXT NOT NULL,
+    trigger_text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (pool_id, trigger_type, trigger_text)
+);
+
 CREATE INDEX IF NOT EXISTS idx_codes_pool_status ON codes(pool_id, status, id);
 CREATE INDEX IF NOT EXISTS idx_claim_records_user_pool ON claim_records(user_id, pool_id);
 CREATE INDEX IF NOT EXISTS idx_pending_friend_flows_user_status
@@ -62,26 +81,47 @@ CREATE INDEX IF NOT EXISTS idx_pending_friend_flows_user_status
 class CodeInviterStorage:
     """Thin SQLite wrapper with schema bootstrap."""
 
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path | str) -> None:
         self.db_path = db_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._memory_uri = ""
+        self._memory_keeper: sqlite3.Connection | None = None
+        if str(db_path) == ":memory:":
+            self._memory_uri = f"file:code_inviter_{uuid.uuid4().hex}?mode=memory&cache=shared"
+            # Keep the shared in-memory database alive across short-lived connections.
+            self._memory_keeper = self._open_memory_connection()
+        else:
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     def connect(self) -> sqlite3.Connection:
+        if str(self.db_path) == ":memory:":
+            return self._open_memory_connection()
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
-        try:
-            conn.execute("PRAGMA journal_mode = WAL")
-        except sqlite3.OperationalError:
-            conn.close()
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA foreign_keys = ON")
-            conn.execute("PRAGMA journal_mode = DELETE")
+        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA journal_mode = DELETE")
         return conn
 
+    def _open_memory_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._memory_uri, uri=True)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        conn = self.connect()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def initialize(self) -> None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             conn.executescript(SCHEMA)
 
     def create_pending_friend_flow(
@@ -93,7 +133,7 @@ class CodeInviterStorage:
         verify_token: str,
         expires_at: str,
     ) -> int:
-        with self.connect() as conn:
+        with self._connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO pending_friend_flows (
@@ -106,14 +146,14 @@ class CodeInviterStorage:
             return int(cursor.lastrowid)
 
     def get_pending_friend_flow(self, flow_id: int) -> sqlite3.Row | None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             return conn.execute(
                 "SELECT * FROM pending_friend_flows WHERE id = ?",
                 (flow_id,),
             ).fetchone()
 
     def find_pending_friend_flow(self, *, user_id: str, verify_token: str) -> sqlite3.Row | None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             return conn.execute(
                 """
                 SELECT *
@@ -128,14 +168,14 @@ class CodeInviterStorage:
             ).fetchone()
 
     def mark_pending_friend_flow_approved(self, flow_id: int) -> None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 "UPDATE pending_friend_flows SET status = 'approved' WHERE id = ?",
                 (flow_id,),
             )
 
     def find_latest_approved_flow(self, *, user_id: str) -> sqlite3.Row | None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             return conn.execute(
                 """
                 SELECT *
@@ -149,7 +189,7 @@ class CodeInviterStorage:
             ).fetchone()
 
     def add_code(self, *, pool_id: str, code: str, batch: str = "", remark: str = "") -> bool:
-        with self.connect() as conn:
+        with self._connection() as conn:
             try:
                 conn.execute(
                     """
@@ -163,7 +203,7 @@ class CodeInviterStorage:
             return True
 
     def count_claims_for_user(self, *, pool_id: str, user_id: str) -> int:
-        with self.connect() as conn:
+        with self._connection() as conn:
             row = conn.execute(
                 """
                 SELECT COUNT(*) AS total
@@ -177,7 +217,7 @@ class CodeInviterStorage:
             return int(row["total"] if row else 0)
 
     def count_codes_by_status(self, *, pool_id: str) -> dict[str, int]:
-        with self.connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """
                 SELECT status, COUNT(*) AS total
@@ -190,7 +230,7 @@ class CodeInviterStorage:
             return {str(row["status"]): int(row["total"]) for row in rows}
 
     def count_claim_records(self, *, pool_id: str = "") -> int:
-        with self.connect() as conn:
+        with self._connection() as conn:
             if pool_id:
                 row = conn.execute(
                     """
@@ -212,15 +252,115 @@ class CodeInviterStorage:
             return int(row["total"] if row else 0)
 
     def list_pool_ids(self) -> list[str]:
-        with self.connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """
-                SELECT DISTINCT pool_id
-                FROM codes
+                SELECT pool_id
+                FROM (
+                    SELECT pool_id FROM code_pools
+                    UNION
+                    SELECT pool_id FROM codes
+                    UNION
+                    SELECT pool_id FROM claim_records
+                )
                 ORDER BY pool_id ASC
                 """
             ).fetchall()
             return [str(row["pool_id"]) for row in rows]
+
+    def upsert_pool(self, *, pool_id: str, display_name: str = "", enabled: bool = True) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO code_pools (pool_id, display_name, enabled)
+                VALUES (?, ?, ?)
+                ON CONFLICT(pool_id) DO UPDATE SET
+                    display_name = CASE
+                        WHEN excluded.display_name != '' THEN excluded.display_name
+                        ELSE code_pools.display_name
+                    END,
+                    enabled = excluded.enabled,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (pool_id, display_name, 1 if enabled else 0),
+            )
+
+    def get_pool(self, *, pool_id: str) -> sqlite3.Row | None:
+        with self._connection() as conn:
+            return conn.execute(
+                "SELECT * FROM code_pools WHERE pool_id = ?",
+                (pool_id,),
+            ).fetchone()
+
+    def set_pool_enabled(self, *, pool_id: str, enabled: bool) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO code_pools (pool_id, enabled)
+                VALUES (?, ?)
+                ON CONFLICT(pool_id) DO UPDATE SET
+                    enabled = excluded.enabled,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (pool_id, 1 if enabled else 0),
+            )
+
+    def replace_pool_triggers(
+        self,
+        *,
+        pool_id: str,
+        trigger_type: str,
+        triggers: list[str],
+    ) -> None:
+        normalized = []
+        seen = set()
+        for trigger in triggers:
+            value = trigger.strip()
+            if not value or value in seen:
+                continue
+            normalized.append(value)
+            seen.add(value)
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM code_pool_triggers WHERE pool_id = ? AND trigger_type = ?",
+                (pool_id, trigger_type),
+            )
+            conn.executemany(
+                """
+                INSERT INTO code_pool_triggers (pool_id, trigger_type, trigger_text)
+                VALUES (?, ?, ?)
+                """,
+                [(pool_id, trigger_type, trigger) for trigger in normalized],
+            )
+
+    def list_pool_triggers(self, *, pool_id: str, trigger_type: str) -> list[str]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT trigger_text
+                FROM code_pool_triggers
+                WHERE pool_id = ?
+                  AND trigger_type = ?
+                ORDER BY trigger_text ASC
+                """,
+                (pool_id, trigger_type),
+            ).fetchall()
+            return [str(row["trigger_text"]) for row in rows]
+
+    def delete_empty_pool(self, *, pool_id: str) -> bool:
+        with self._connection() as conn:
+            code_count = conn.execute(
+                "SELECT COUNT(*) AS total FROM codes WHERE pool_id = ?",
+                (pool_id,),
+            ).fetchone()
+            claim_count = conn.execute(
+                "SELECT COUNT(*) AS total FROM claim_records WHERE pool_id = ?",
+                (pool_id,),
+            ).fetchone()
+            if int(code_count["total"]) > 0 or int(claim_count["total"]) > 0:
+                return False
+            conn.execute("DELETE FROM code_pools WHERE pool_id = ?", (pool_id,))
+            return True
 
     def claim_next_code(
         self,
@@ -231,7 +371,7 @@ class CodeInviterStorage:
         source_group_id: str = "",
         source_group_name: str = "",
     ) -> sqlite3.Row | None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             code_row = conn.execute(
                 """
@@ -309,7 +449,7 @@ class CodeInviterStorage:
         claimed_after: str = "",
         claimed_before: str = "",
     ) -> list[sqlite3.Row]:
-        with self.connect() as conn:
+        with self._connection() as conn:
             where = ["claim_records.pool_id = ?"]
             params: list[str] = [pool_id]
             if claimed_after:
@@ -328,7 +468,7 @@ class CodeInviterStorage:
             return conn.execute(sql, params).fetchall()
 
     def list_claim_records_by_user(self, *, user_id: str, pool_id: str = "") -> list[sqlite3.Row]:
-        with self.connect() as conn:
+        with self._connection() as conn:
             where = ["claim_records.user_id = ?"]
             params: list[str] = [user_id]
             if pool_id:
@@ -344,7 +484,7 @@ class CodeInviterStorage:
             return conn.execute(sql, params).fetchall()
 
     def upsert_blocked_user(self, *, user_id: str, reason: str, created_by: str) -> None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 INSERT INTO blocked_users (user_id, reason, created_by)
@@ -358,14 +498,14 @@ class CodeInviterStorage:
             )
 
     def remove_blocked_user(self, *, user_id: str) -> None:
-        with self.connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 "DELETE FROM blocked_users WHERE user_id = ?",
                 (user_id,),
             )
 
     def is_blocked_user(self, *, user_id: str) -> bool:
-        with self.connect() as conn:
+        with self._connection() as conn:
             row = conn.execute(
                 "SELECT 1 FROM blocked_users WHERE user_id = ? LIMIT 1",
                 (user_id,),
@@ -373,7 +513,7 @@ class CodeInviterStorage:
             return row is not None
 
     def reset_user_claims(self, *, pool_id: str, user_id: str) -> int:
-        with self.connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """
                 SELECT code_id

@@ -17,7 +17,7 @@ def test_group_trigger_creates_pending_flow(tmp_path):
             },
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
 
     result = GroupTriggerService(config, storage).handle_group_message(
@@ -49,7 +49,7 @@ def test_group_trigger_rejects_unallowed_group(tmp_path):
             },
         }
     )
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
 
     result = GroupTriggerService(config, storage).handle_group_message(
@@ -59,4 +59,3 @@ def test_group_trigger_rejects_unallowed_group(tmp_path):
     )
 
     assert result.matched is False
-

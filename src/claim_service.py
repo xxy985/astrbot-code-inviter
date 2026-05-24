@@ -36,7 +36,7 @@ class ClaimService:
         pool = self._match_pool(message.strip())
         if pool is None:
             return ClaimResult(claimed=False, reason="trigger_not_matched")
-        if not pool.enabled:
+        if not self._is_pool_enabled(pool.pool_id, pool.enabled):
             return ClaimResult(claimed=False, reason="pool_disabled", pool_id=pool.pool_id)
 
         user_id_text = str(user_id)
@@ -69,10 +69,38 @@ class ClaimService:
         )
 
     def _match_pool(self, message: str) -> CodePoolConfig | None:
-        for pool in self.config.pools.values():
-            if message in pool.private_triggers:
+        for pool in self._all_pools():
+            if message in self._private_triggers(pool):
                 return pool
         return None
+
+    def _all_pools(self) -> list[CodePoolConfig]:
+        pools = dict(self.config.pools)
+        for pool_id in self.storage.list_pool_ids():
+            if pool_id in pools:
+                continue
+            row = self.storage.get_pool(pool_id=pool_id)
+            display_name = str(row["display_name"] or pool_id) if row else pool_id
+            enabled = bool(int(row["enabled"])) if row else True
+            pools[pool_id] = CodePoolConfig(
+                pool_id=pool_id,
+                display_name=display_name,
+                enabled=enabled,
+            )
+        return list(pools.values())
+
+    def _private_triggers(self, pool: CodePoolConfig) -> list[str]:
+        dynamic_triggers = self.storage.list_pool_triggers(
+            pool_id=pool.pool_id,
+            trigger_type="private",
+        )
+        return dynamic_triggers or pool.private_triggers
+
+    def _is_pool_enabled(self, pool_id: str, config_enabled: bool) -> bool:
+        pool_row = self.storage.get_pool(pool_id=pool_id)
+        if pool_row is not None:
+            return bool(int(pool_row["enabled"]))
+        return config_enabled
 
     def _claim_limit_reason(self, *, pool: CodePoolConfig, user_id: str) -> str:
         policy = pool.claim_policy

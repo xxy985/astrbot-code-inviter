@@ -7,7 +7,7 @@ from src.storage import CodeInviterStorage
 
 
 def test_import_text_codes_counts_duplicates(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     service = AdminService(storage=storage, export_dir=tmp_path / "exports")
 
@@ -23,7 +23,7 @@ def test_import_text_codes_counts_duplicates(tmp_path):
 
 
 def test_export_claim_records_writes_csv(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001", batch="batch-a")
     config = parse_plugin_config(
@@ -56,7 +56,7 @@ def test_export_claim_records_writes_csv(tmp_path):
 
 
 def test_import_csv_codes_counts_failures_and_duplicates(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     service = AdminService(storage=storage, export_dir=tmp_path / "exports")
     csv_path = tmp_path / "codes.csv"
@@ -71,7 +71,7 @@ def test_import_csv_codes_counts_failures_and_duplicates(tmp_path):
 
 
 def test_query_user_claims_returns_claim_summaries(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001", batch="batch-a")
     storage.claim_next_code(pool_id="invite", user_id="123", user_nickname="tester")
@@ -86,7 +86,7 @@ def test_query_user_claims_returns_claim_summaries(tmp_path):
 
 
 def test_block_and_unblock_user(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     service = AdminService(storage=storage, export_dir=tmp_path / "exports")
 
@@ -98,7 +98,7 @@ def test_block_and_unblock_user(tmp_path):
 
 
 def test_statistics_counts_inventory_and_claim_records(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.add_code(pool_id="invite", code="CODE002")
@@ -116,7 +116,7 @@ def test_statistics_counts_inventory_and_claim_records(tmp_path):
 
 
 def test_reset_user_claims_revokes_records_and_returns_code(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.claim_next_code(pool_id="invite", user_id="123")
@@ -130,7 +130,7 @@ def test_reset_user_claims_revokes_records_and_returns_code(tmp_path):
 
 
 def test_export_claim_records_filters_date_range(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
     storage.add_code(pool_id="invite", code="CODE001")
     storage.claim_next_code(pool_id="invite", user_id="123")

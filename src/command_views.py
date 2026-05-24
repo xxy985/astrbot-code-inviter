@@ -53,7 +53,16 @@ class CommandViews:
         lines = [line.strip() for line in message.splitlines()]
         if not lines:
             return ImportTextPayload(pool_id="", lines=[])
-        head = lines[0].split(maxsplit=1)
+        first_line = lines[0].removeprefix("@").strip()
+        separator_indexes = [
+            first_line.find(separator)
+            for separator in ("：", ":", "，", ",")
+            if first_line.find(separator) >= 0
+        ]
+        if separator_indexes:
+            index = min(separator_indexes)
+            first_line = f"{first_line[:index]} {first_line[index + 1:]}"
+        head = first_line.split(maxsplit=1)
         if len(head) < 2:
             return ImportTextPayload(pool_id="", lines=[])
         return ImportTextPayload(pool_id=head[1].strip(), lines=[line for line in lines[1:] if line])

@@ -49,14 +49,44 @@ class GroupTriggerService:
         )
 
     def _match_pool(self, *, group_id: int, message: str) -> CodePoolConfig | None:
-        for pool in self.config.pools.values():
-            if not pool.enabled or message not in pool.group_triggers:
+        for pool in self._all_pools():
+            if not self._is_pool_enabled(pool.pool_id, pool.enabled):
+                continue
+            if message not in self._group_triggers(pool):
                 continue
             allowed_groups = pool.allowed_groups or self.config.global_allowed_groups
             if allowed_groups and group_id not in allowed_groups:
                 return None
             return pool
         return None
+
+    def _all_pools(self) -> list[CodePoolConfig]:
+        pools = dict(self.config.pools)
+        for pool_id in self.storage.list_pool_ids():
+            if pool_id in pools:
+                continue
+            row = self.storage.get_pool(pool_id=pool_id)
+            display_name = str(row["display_name"] or pool_id) if row else pool_id
+            enabled = bool(int(row["enabled"])) if row else True
+            pools[pool_id] = CodePoolConfig(
+                pool_id=pool_id,
+                display_name=display_name,
+                enabled=enabled,
+            )
+        return list(pools.values())
+
+    def _group_triggers(self, pool: CodePoolConfig) -> list[str]:
+        dynamic_triggers = self.storage.list_pool_triggers(
+            pool_id=pool.pool_id,
+            trigger_type="group",
+        )
+        return dynamic_triggers or pool.group_triggers
+
+    def _is_pool_enabled(self, pool_id: str, config_enabled: bool) -> bool:
+        pool_row = self.storage.get_pool(pool_id=pool_id)
+        if pool_row is not None:
+            return bool(int(pool_row["enabled"]))
+        return config_enabled
 
     def _new_token(self) -> str:
         return f"{secrets.randbelow(1_000_000):06d}"

@@ -106,6 +106,44 @@ class AdminService:
             "claim_records": self.storage.count_claim_records(pool_id=pool_id),
         }
 
+    def upsert_pool(self, *, pool_id: str, display_name: str = "", enabled: bool = True) -> None:
+        self.storage.upsert_pool(pool_id=pool_id, display_name=display_name, enabled=enabled)
+
+    def set_pool_enabled(self, *, pool_id: str, enabled: bool) -> None:
+        self.storage.set_pool_enabled(pool_id=pool_id, enabled=enabled)
+
+    def replace_pool_triggers(
+        self,
+        *,
+        pool_id: str,
+        trigger_type: str,
+        triggers: list[str],
+    ) -> None:
+        self.storage.replace_pool_triggers(
+            pool_id=pool_id,
+            trigger_type=trigger_type,
+            triggers=triggers,
+        )
+
+    def list_pool_triggers(self, *, pool_id: str, trigger_type: str) -> list[str]:
+        return self.storage.list_pool_triggers(pool_id=pool_id, trigger_type=trigger_type)
+
+    def delete_empty_pool(self, *, pool_id: str) -> bool:
+        return self.storage.delete_empty_pool(pool_id=pool_id)
+
+    def pool_status(self, *, pool_id: str) -> dict[str, str | int | bool]:
+        pool_row = self.storage.get_pool(pool_id=pool_id)
+        counts = self.inventory(pool_id=pool_id)
+        return {
+            "pool_id": pool_id,
+            "display_name": str(pool_row["display_name"]) if pool_row else "",
+            "enabled": bool(int(pool_row["enabled"])) if pool_row else True,
+            "unused": counts["unused"],
+            "claimed": counts["claimed"],
+            "disabled": counts["disabled"],
+            "claim_records": self.storage.count_claim_records(pool_id=pool_id),
+        }
+
     def query_user_claims(self, *, user_id: str, pool_id: str = "") -> list[ClaimRecordSummary]:
         rows = self.storage.list_claim_records_by_user(user_id=user_id, pool_id=pool_id)
         return [self._claim_record_summary(row) for row in rows]

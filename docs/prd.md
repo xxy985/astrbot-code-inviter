@@ -40,10 +40,10 @@
 ### 3.1 v1 必须包含
 
 - 多码池管理，至少支持两个码池。
-- 群聊精确触发词引导用户添加好友。
+- 群聊预设 `@命令词` 引导用户添加好友；裸文本触发词不进入插件流程。
 - 为每次群触发生成一次性好友验证 token。
 - 自动处理好友申请：仅通过有有效群触发记录和匹配 token 的用户。
-- 私聊精确触发词领取码，每次触发只发一个码。
+- 私聊预设 `@命令词` 领取码，每次触发只发一个码。
 - 每个码池独立领取规则。
 - 文本列表批量导入码。
 - CSV 批量导入码。
@@ -69,8 +69,8 @@
 
 ### 4.1 群内触发加好友流程
 
-1. 用户在允许群发送码池的群触发词，例如 `领邀请码`。
-2. 插件使用整句精确匹配识别触发词。
+1. 用户在允许群发送码池的群触发词，例如 `@领邀请码`。
+2. 插件使用预设 `@命令词` 白名单精确匹配识别触发词。
 3. 插件检查该群是否允许领取该码池。
 4. 插件生成一次性验证 token，并记录待处理流程：
    - `user_id`
@@ -78,7 +78,7 @@
    - `pool_id`
    - `verify_token`
    - `expires_at`
-5. 机器人在群内回复加好友说明，例如：`请添加机器人好友，验证信息填写：领码-482913，然后私聊发送：领取邀请码`。
+5. 机器人在群内回复加好友说明，例如：`请添加机器人好友，验证信息填写：领码-482913，然后私聊发送：@领取邀请码`。
 
 ### 4.2 自动通过好友申请
 
@@ -94,7 +94,7 @@
 
 ### 4.3 私聊领取码
 
-1. 用户私聊机器人发送码池私聊触发词，例如 `领取邀请码`。
+1. 用户私聊机器人发送码池私聊触发词，例如 `@领取邀请码`。
 2. 插件精确匹配触发词并定位码池。
 3. 插件检查：
    - 用户是否有有效群来源记录。
@@ -122,7 +122,7 @@
 - 消息模板。码池未配置独立文案时使用全局消息模板。
 - 统计开关。
 
-触发词默认使用整句精确匹配。v1 可预留正则配置，但默认关闭。
+触发词默认使用整句精确匹配，并且实际输入必须带 `@` 前缀。v1 可预留正则配置，但默认关闭。
 
 ### 5.2 领取规则
 
@@ -149,7 +149,7 @@
 1. 管理员文本列表导入：
 
 ```text
-/导入码 邀请码
+@导入码 邀请码
 CODE001
 CODE002
 CODE003
@@ -178,9 +178,9 @@ v1 采用本地生成 CSV 文件路径的方式。
 管理员命令示例：
 
 ```text
-/导出领取记录 邀请码
-/导出领取记录 邀请码 今日
-/导出领取记录 邀请码 2026-05-01 2026-05-21
+@导出领取记录 邀请码
+@导出领取记录 邀请码 今日
+@导出领取记录 邀请码 2026-05-01 2026-05-21
 ```
 
 导出字段：
@@ -201,26 +201,32 @@ record_id,pool_id,pool_name,user_id,user_nickname,source_group_id,source_group_n
 建议 v1 支持：
 
 ```text
-/发码库存
-/发码库存 邀请码
+@库存
+@库存 邀请码
 
-/发码统计
-/发码统计 兑换码
+@统计
+@统计 兑换码
 
-/查领取 123456789
-/查领取 123456789 邀请码
+@记录 123456789
+@记录 123456789 邀请码
 
-/导入码 邀请码
-/导入csv 邀请码 codes.csv
+@导入码 邀请码
+@导入csv 邀请码 codes.csv
 
-/导出领取记录 邀请码
-/重置领取 邀请码 123456789
+@导出领取记录 邀请码
+@重置领取 邀请码 123456789
 
-/禁领 123456789
-/解禁 123456789
+@禁领 123456789
+@解禁 123456789
+@码池
+@码池新增 beta 测试池
+@码池删除 beta
+@触发词 invite 群 领邀请码,我要邀请码
+@触发词 invite 私 领取邀请码
 ```
 
 管理员命令只允许配置中的 `admin_users` 使用。
+非管理员发送已预设管理命令时，插件会接管并返回权限失败；未预设的 `@xxx` 和裸文本不由插件处理。
 
 ## 6. 后台配置
 
@@ -245,13 +251,13 @@ friend_gate:
   auto_approve: true
   require_group_trigger_before_approve: true
   require_verify_token: true
-  token_ttl_minutes: 30
+  token_ttl_minutes: 30  # 单位：分钟
   token_template: "领码-{token}"
   reject_without_pending_flow: true
 
 claim_gate:
   require_group_source: true
-  group_source_ttl_hours: 24
+  group_source_ttl_hours: 24  # 单位：小时
   allow_existing_friends_without_group_source: false
 
 code_pools:
@@ -267,9 +273,9 @@ code_pools:
     claim_policy:
       mode: "once_per_user"
       per_user_limit: 1
-      period: "none"
-      period_limit: 0
-      cooldown_seconds: 30
+      period: "none"      # 周期单位：none/day/week/month
+      period_limit: 0     # 单位：次
+      cooldown_seconds: 30  # 单位：秒
     statistics:
       enabled: true
     messages: {}
@@ -286,9 +292,9 @@ code_pools:
     claim_policy:
       mode: "limited_per_period"
       per_user_limit: 0
-      period: "day"
-      period_limit: 1
-      cooldown_seconds: 60
+      period: "day"       # 周期单位：none/day/week/month
+      period_limit: 1     # 单位：次
+      cooldown_seconds: 60  # 单位：秒
     statistics:
       enabled: true
     messages: {}

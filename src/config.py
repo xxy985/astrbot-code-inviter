@@ -11,15 +11,17 @@ ClaimPeriod = Literal["none", "day", "week", "month"]
 
 
 DEFAULT_ADMIN_COMMANDS: dict[str, list[str]] = {
-    "inventory": ["发码库存", "/发码库存", "全部库存", "/全部库存"],
-    "statistics": ["发码统计", "/发码统计"],
-    "query_claims": ["查领取", "/查领取"],
-    "import_codes": ["导入码", "/导入码"],
-    "import_csv": ["导入csv", "导入CSV", "/导入csv", "/导入CSV"],
-    "export_claims": ["导出领取记录", "/导出领取记录"],
-    "reset_claims": ["重置领取", "/重置领取"],
-    "block_user": ["禁领", "/禁领"],
-    "unblock_user": ["解禁", "/解禁"],
+    "inventory": ["库存", "发码库存", "全部库存"],
+    "statistics": ["统计", "发码统计"],
+    "query_claims": ["记录", "查领取"],
+    "import_codes": ["导入码"],
+    "import_csv": ["导入csv", "导入CSV"],
+    "export_claims": ["导出领取记录"],
+    "reset_claims": ["重置领取"],
+    "block_user": ["禁领"],
+    "unblock_user": ["解禁"],
+    "pool_admin": ["码池"],
+    "trigger_admin": ["触发词"],
 }
 
 
@@ -55,6 +57,8 @@ class AdminCommandConfig:
     reset_claims: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["reset_claims"]))
     block_user: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["block_user"]))
     unblock_user: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["unblock_user"]))
+    pool_admin: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["pool_admin"]))
+    trigger_admin: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["trigger_admin"]))
 
     def aliases_by_command(self) -> dict[str, list[str]]:
         return {
@@ -67,6 +71,8 @@ class AdminCommandConfig:
             "reset_claims": self.reset_claims,
             "block_user": self.block_user,
             "unblock_user": self.unblock_user,
+            "pool_admin": self.pool_admin,
+            "trigger_admin": self.trigger_admin,
         }
 
 

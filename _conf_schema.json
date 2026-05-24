@@ -10,7 +10,7 @@
     "default": []
   },
   "bot_aliases": {
-    "description": "机器人昵称前缀。消息以这些昵称开头并跟随逗号、冒号、顿号、分号或空格时，会先去掉前缀再做精确触发词匹配。",
+    "description": "机器人昵称前缀。消息以这些昵称开头并跟随逗号、冒号、顿号、分号或空格时，会先去掉前缀；去掉后仍必须命中预设 @命令词 才进入插件流程。",
     "type": "list",
     "default": [
       "秋秋"
@@ -22,89 +22,95 @@
     "default": []
   },
   "admin_commands": {
-    "description": "管理员功能触发词。每个功能可以设置多个精确触发词，命中后由插件代码处理并阻止后续 LLM 接管。",
+    "description": "管理员功能命令词白名单。实际输入必须是预设 @命令词，例如 @库存；只有命中这里的预设命令词才由插件处理并阻止后续 LLM 接管。",
     "type": "object",
     "items": {
       "inventory": {
-        "description": "库存查询触发词。",
+        "description": "库存查询命令词。实际输入示例：@库存 或 @发码库存。",
         "type": "list",
         "default": [
+          "库存",
           "发码库存",
-          "/发码库存",
-          "全部库存",
-          "/全部库存"
+          "全部库存"
         ]
       },
       "statistics": {
-        "description": "统计查询触发词。",
+        "description": "统计查询命令词。实际输入示例：@统计。",
         "type": "list",
         "default": [
-          "发码统计",
-          "/发码统计"
+          "统计",
+          "发码统计"
         ]
       },
       "query_claims": {
-        "description": "用户领取记录查询触发词。",
+        "description": "用户领取记录查询命令词。实际输入示例：@记录 <用户QQ> [码池ID]。",
         "type": "list",
         "default": [
-          "查领取",
-          "/查领取"
+          "记录",
+          "查领取"
         ]
       },
       "import_codes": {
-        "description": "文本导入码触发词。",
+        "description": "文本导入码命令词。实际输入示例：@导入码 <码池ID>，后续行粘贴码。",
         "type": "list",
         "default": [
-          "导入码",
-          "/导入码"
+          "导入码"
         ]
       },
       "import_csv": {
-        "description": "CSV 导入触发词。",
+        "description": "CSV 导入命令词。实际输入示例：@导入csv <码池ID> <本地CSV路径>。",
         "type": "list",
         "default": [
           "导入csv",
-          "导入CSV",
-          "/导入csv",
-          "/导入CSV"
+          "导入CSV"
         ]
       },
       "export_claims": {
-        "description": "导出领取记录触发词。",
+        "description": "导出领取记录命令词。实际输入示例：@导出领取记录 <码池ID> [开始日期] [结束日期]。",
         "type": "list",
         "default": [
-          "导出领取记录",
-          "/导出领取记录"
+          "导出领取记录"
         ]
       },
       "reset_claims": {
-        "description": "重置用户领取记录触发词。",
+        "description": "重置用户领取记录命令词。实际输入示例：@重置领取 <码池ID> <用户QQ>。",
         "type": "list",
         "default": [
-          "重置领取",
-          "/重置领取"
+          "重置领取"
         ]
       },
       "block_user": {
-        "description": "禁领用户触发词。",
+        "description": "禁领用户命令词。实际输入示例：@禁领 <用户QQ> [原因]。",
         "type": "list",
         "default": [
-          "禁领",
-          "/禁领"
+          "禁领"
         ]
       },
       "unblock_user": {
-        "description": "解除禁领触发词。",
+        "description": "解除禁领命令词。实际输入示例：@解禁 <用户QQ>。",
         "type": "list",
         "default": [
-          "解禁",
-          "/解禁"
+          "解禁"
+        ]
+      },
+      "pool_admin": {
+        "description": "码池管理命令词。实际输入示例：@码池、@码池新增 <码池ID> [展示名称]、@码池删除 <码池ID>。",
+        "type": "list",
+        "default": [
+          "码池"
+        ]
+      },
+      "trigger_admin": {
+        "description": "触发词管理命令词。实际输入示例：@触发词 <码池ID> 群|私 <触发词1,触发词2>。触发词生效时也必须带 @ 前缀。",
+        "type": "list",
+        "default": [
+          "触发词"
         ]
       }
     }
   },
   "matching": {
-    "description": "触发词匹配规则。",
+    "description": "触发词匹配规则。当前用户入口是预设 @命令词 白名单；未预设的 @xxx 和裸文本均不进入插件流程。",
     "type": "object",
     "items": {
       "trigger_match_mode": {
@@ -129,7 +135,7 @@
         "default": true
       },
       "token_ttl_minutes": {
-        "description": "一次性好友验证 token 有效期。",
+        "description": "一次性好友验证 token 有效期，单位：分钟。",
         "type": "int",
         "default": 30
       },
@@ -150,14 +156,14 @@
         "default": true
       },
       "group_source_ttl_hours": {
-        "description": "群来源记录有效期。",
+        "description": "群来源记录有效期，单位：小时。",
         "type": "int",
         "default": 24
       }
     }
   },
   "code_pools": {
-    "description": "多码池配置。每个码池可独立设置群聊触发词、私聊领取触发词、允许群、领取规则和文案覆盖。",
+    "description": "多码池配置。每个码池可独立设置群聊触发词、私聊领取触发词、允许群、领取规则和文案覆盖。触发时必须加 @ 前缀，例如配置 领邀请码 后，实际发送 @领邀请码。",
     "type": "object",
     "items": {
       "example": {
@@ -180,7 +186,7 @@
             "default": []
           },
           "group_triggers": {
-            "description": "群聊加好友流程触发词，整句精确匹配。",
+            "description": "群聊加好友流程触发词，整句精确匹配。配置中不要写 @；实际输入时必须带 @ 前缀。",
             "type": "list",
             "default": [
               "领邀请码",
@@ -188,7 +194,7 @@
             ]
           },
           "private_triggers": {
-            "description": "私聊领取码触发词，整句精确匹配。",
+            "description": "私聊领取码触发词，整句精确匹配。配置中不要写 @；实际输入时必须带 @ 前缀。",
             "type": "list",
             "default": [
               "领取邀请码"
@@ -209,17 +215,17 @@
                 "default": 1
               },
               "period": {
-                "description": "周期限制单位：none、day、week 或 month。",
+                "description": "周期限制单位：none、day、week 或 month，分别表示无周期、天、周、月。",
                 "type": "string",
                 "default": "none"
               },
               "period_limit": {
-                "description": "limited_per_period 模式下每周期领取上限。",
+                "description": "limited_per_period 模式下每个周期的领取上限，单位：次。",
                 "type": "int",
                 "default": 0
               },
               "cooldown_seconds": {
-                "description": "同一用户两次领取之间的冷却秒数。",
+                "description": "同一用户两次领取之间的冷却时间，单位：秒。",
                 "type": "int",
                 "default": 30
               }

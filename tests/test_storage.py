@@ -2,7 +2,7 @@ from src.storage import CodeInviterStorage
 
 
 def test_storage_initializes_schema(tmp_path):
-    storage = CodeInviterStorage(tmp_path / "code_inviter.sqlite3")
+    storage = CodeInviterStorage(":memory:")
     storage.initialize()
 
     with storage.connect() as conn:
@@ -17,4 +17,3 @@ def test_storage_initializes_schema(tmp_path):
     assert "claim_records" in tables
     assert "pending_friend_flows" in tables
     assert "blocked_users" in tables
-
