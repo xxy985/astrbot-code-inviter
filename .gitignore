@@ -23,6 +23,10 @@ __pycache__/
 pytest-cache-files-*/
 .tmp/
 tmp-pytest/
+pytest-workspace-temp/
+manual-test-paths/
+pytest-probe-dir/
+sqlite-probe-dir*/
 .venv/
 venv/
 

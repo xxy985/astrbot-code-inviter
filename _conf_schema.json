@@ -9,10 +9,99 @@
     "type": "list",
     "default": []
   },
+  "bot_aliases": {
+    "description": "机器人昵称前缀。消息以这些昵称开头并跟随逗号、冒号、顿号、分号或空格时，会先去掉前缀再做精确触发词匹配。",
+    "type": "list",
+    "default": [
+      "秋秋"
+    ]
+  },
   "global_allowed_groups": {
     "description": "默认允许触发领码流程的 QQ 群号列表。码池可覆盖该配置。",
     "type": "list",
     "default": []
+  },
+  "admin_commands": {
+    "description": "管理员功能触发词。每个功能可以设置多个精确触发词，命中后由插件代码处理并阻止后续 LLM 接管。",
+    "type": "object",
+    "items": {
+      "inventory": {
+        "description": "库存查询触发词。",
+        "type": "list",
+        "default": [
+          "发码库存",
+          "/发码库存",
+          "全部库存",
+          "/全部库存"
+        ]
+      },
+      "statistics": {
+        "description": "统计查询触发词。",
+        "type": "list",
+        "default": [
+          "发码统计",
+          "/发码统计"
+        ]
+      },
+      "query_claims": {
+        "description": "用户领取记录查询触发词。",
+        "type": "list",
+        "default": [
+          "查领取",
+          "/查领取"
+        ]
+      },
+      "import_codes": {
+        "description": "文本导入码触发词。",
+        "type": "list",
+        "default": [
+          "导入码",
+          "/导入码"
+        ]
+      },
+      "import_csv": {
+        "description": "CSV 导入触发词。",
+        "type": "list",
+        "default": [
+          "导入csv",
+          "导入CSV",
+          "/导入csv",
+          "/导入CSV"
+        ]
+      },
+      "export_claims": {
+        "description": "导出领取记录触发词。",
+        "type": "list",
+        "default": [
+          "导出领取记录",
+          "/导出领取记录"
+        ]
+      },
+      "reset_claims": {
+        "description": "重置用户领取记录触发词。",
+        "type": "list",
+        "default": [
+          "重置领取",
+          "/重置领取"
+        ]
+      },
+      "block_user": {
+        "description": "禁领用户触发词。",
+        "type": "list",
+        "default": [
+          "禁领",
+          "/禁领"
+        ]
+      },
+      "unblock_user": {
+        "description": "解除禁领触发词。",
+        "type": "list",
+        "default": [
+          "解禁",
+          "/解禁"
+        ]
+      }
+    }
   },
   "matching": {
     "description": "触发词匹配规则。",
@@ -64,6 +153,84 @@
         "description": "群来源记录有效期。",
         "type": "int",
         "default": 24
+      }
+    }
+  },
+  "code_pools": {
+    "description": "多码池配置。每个码池可独立设置群聊触发词、私聊领取触发词、允许群、领取规则和文案覆盖。",
+    "type": "object",
+    "items": {
+      "example": {
+        "description": "示例码池配置。实际使用时请把 example 改为 invite、redeem 等唯一码池 ID。",
+        "type": "object",
+        "items": {
+          "enabled": {
+            "description": "是否启用该码池。",
+            "type": "bool",
+            "default": true
+          },
+          "display_name": {
+            "description": "码池展示名称。",
+            "type": "string",
+            "default": "邀请码"
+          },
+          "allowed_groups": {
+            "description": "该码池允许触发的 QQ 群。为空时使用 global_allowed_groups。",
+            "type": "list",
+            "default": []
+          },
+          "group_triggers": {
+            "description": "群聊加好友流程触发词，整句精确匹配。",
+            "type": "list",
+            "default": [
+              "领邀请码",
+              "我要邀请码"
+            ]
+          },
+          "private_triggers": {
+            "description": "私聊领取码触发词，整句精确匹配。",
+            "type": "list",
+            "default": [
+              "领取邀请码"
+            ]
+          },
+          "claim_policy": {
+            "description": "该码池领取规则。",
+            "type": "object",
+            "items": {
+              "mode": {
+                "description": "领取模式：once_per_user、limited_per_user、limited_per_period 或 unlimited。",
+                "type": "string",
+                "default": "once_per_user"
+              },
+              "per_user_limit": {
+                "description": "limited_per_user 模式下每个用户总领取上限。",
+                "type": "int",
+                "default": 1
+              },
+              "period": {
+                "description": "周期限制单位：none、day、week 或 month。",
+                "type": "string",
+                "default": "none"
+              },
+              "period_limit": {
+                "description": "limited_per_period 模式下每周期领取上限。",
+                "type": "int",
+                "default": 0
+              },
+              "cooldown_seconds": {
+                "description": "同一用户两次领取之间的冷却秒数。",
+                "type": "int",
+                "default": 30
+              }
+            }
+          },
+          "messages": {
+            "description": "码池级消息覆盖。为空时使用全局默认文案。",
+            "type": "object",
+            "items": {}
+          }
+        }
       }
     }
   },

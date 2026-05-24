@@ -10,6 +10,19 @@ ClaimMode = Literal["once_per_user", "limited_per_user", "limited_per_period", "
 ClaimPeriod = Literal["none", "day", "week", "month"]
 
 
+DEFAULT_ADMIN_COMMANDS: dict[str, list[str]] = {
+    "inventory": ["发码库存", "/发码库存", "全部库存", "/全部库存"],
+    "statistics": ["发码统计", "/发码统计"],
+    "query_claims": ["查领取", "/查领取"],
+    "import_codes": ["导入码", "/导入码"],
+    "import_csv": ["导入csv", "导入CSV", "/导入csv", "/导入CSV"],
+    "export_claims": ["导出领取记录", "/导出领取记录"],
+    "reset_claims": ["重置领取", "/重置领取"],
+    "block_user": ["禁领", "/禁领"],
+    "unblock_user": ["解禁", "/解禁"],
+}
+
+
 @dataclass(slots=True)
 class ClaimPolicy:
     mode: ClaimMode = "once_per_user"
@@ -32,9 +45,37 @@ class CodePoolConfig:
 
 
 @dataclass(slots=True)
+class AdminCommandConfig:
+    inventory: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["inventory"]))
+    statistics: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["statistics"]))
+    query_claims: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["query_claims"]))
+    import_codes: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["import_codes"]))
+    import_csv: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["import_csv"]))
+    export_claims: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["export_claims"]))
+    reset_claims: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["reset_claims"]))
+    block_user: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["block_user"]))
+    unblock_user: list[str] = field(default_factory=lambda: list(DEFAULT_ADMIN_COMMANDS["unblock_user"]))
+
+    def aliases_by_command(self) -> dict[str, list[str]]:
+        return {
+            "inventory": self.inventory,
+            "statistics": self.statistics,
+            "query_claims": self.query_claims,
+            "import_codes": self.import_codes,
+            "import_csv": self.import_csv,
+            "export_claims": self.export_claims,
+            "reset_claims": self.reset_claims,
+            "block_user": self.block_user,
+            "unblock_user": self.unblock_user,
+        }
+
+
+@dataclass(slots=True)
 class PluginConfig:
     enabled: bool = True
     admin_users: list[int] = field(default_factory=list)
+    bot_aliases: list[str] = field(default_factory=lambda: ["秋秋"])
+    admin_commands: AdminCommandConfig = field(default_factory=AdminCommandConfig)
     global_allowed_groups: list[int] = field(default_factory=list)
     token_ttl_minutes: int = 30
     token_template: str = "领码-{token}"
@@ -49,6 +90,7 @@ def parse_plugin_config(raw: dict[str, Any]) -> PluginConfig:
     """Parse AstrBot config into typed plugin settings."""
 
     pools_raw = raw.get("code_pools", {})
+    pools_raw = pools_raw if isinstance(pools_raw, dict) else {}
     pools = {
         str(pool_id): _parse_pool(str(pool_id), pool_raw)
         for pool_id, pool_raw in pools_raw.items()
@@ -60,6 +102,8 @@ def parse_plugin_config(raw: dict[str, Any]) -> PluginConfig:
     return PluginConfig(
         enabled=bool(raw.get("enabled", True)),
         admin_users=_int_list(raw.get("admin_users", [])),
+        bot_aliases=_str_list(raw.get("bot_aliases", ["秋秋"])),
+        admin_commands=_parse_admin_commands(raw.get("admin_commands", {})),
         global_allowed_groups=_int_list(raw.get("global_allowed_groups", [])),
         token_ttl_minutes=int(friend_gate.get("token_ttl_minutes", 30)),
         token_template=str(friend_gate.get("token_template", "领码-{token}")),
@@ -94,5 +138,26 @@ def _parse_claim_policy(raw: dict[str, Any]) -> ClaimPolicy:
     )
 
 
+def _parse_admin_commands(raw: Any) -> AdminCommandConfig:
+    raw = raw if isinstance(raw, dict) else {}
+    values = {
+        key: _str_list(raw.get(key, DEFAULT_ADMIN_COMMANDS[key]))
+        for key in DEFAULT_ADMIN_COMMANDS
+    }
+    return AdminCommandConfig(**values)
+
+
 def _int_list(value: Any) -> list[int]:
     return [int(item) for item in value or []]
+
+
+def _str_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        candidates = [value]
+    elif isinstance(value, (list, tuple, set)):
+        candidates = list(value)
+    else:
+        candidates = [value]
+    return [str(item).strip() for item in candidates if str(item).strip()]

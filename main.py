@@ -60,6 +60,7 @@ class AstrBotCodeInviterPlugin(Star):
             claim_service=self.claim_service,
             friend_service=self.friend_service,
             admin_service=self.admin_service,
+            command_views=self.command_views,
         )
 
     @filter.on_astrbot_loaded()
@@ -70,27 +71,29 @@ class AstrBotCodeInviterPlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
     async def on_group_message(self, event: AstrMessageEvent):
-        result = self.handle_group_trigger(
+        result = self.handlers.handle_group_message(
             user_id=self._sender_id(event),
             group_id=self._group_id(event),
             message=event.message_str,
+            is_admin=self._is_plugin_admin(event),
         )
-        if not result["matched"]:
+        if not result.matched:
             return
         event.stop_event()
-        yield event.plain_result(str(result["guide_message"]))
+        yield event.plain_result(result.reply)
 
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
     async def on_private_message(self, event: AstrMessageEvent):
-        result = self.handle_private_claim(
+        result = self.handlers.handle_private_message(
             user_id=self._sender_id(event),
             message=event.message_str,
+            is_admin=self._is_plugin_admin(event),
             user_nickname=event.get_sender_name(),
         )
-        if result["reason"] == "trigger_not_matched":
+        if not result.matched:
             return
         event.stop_event()
-        yield event.plain_result(self.command_views.claim_reply(result))
+        yield event.plain_result(result.reply)
 
     @filter.event_message_type(filter.EventMessageType.OTHER_MESSAGE)
     async def on_other_message(self, event: AstrMessageEvent):
@@ -112,63 +115,52 @@ class AstrBotCodeInviterPlugin(Star):
 
     @filter.command("发码库存")
     async def command_inventory(self, event: AstrMessageEvent, pool_id: str = ""):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        pools = [pool_id] if pool_id else self._known_pool_ids()
-        if not pools:
-            yield event.plain_result("暂无码池库存。")
-            return
-        lines = []
-        for current_pool_id in pools:
-            counts = self.admin_service.inventory(pool_id=current_pool_id)
-            lines.append(
-                f"{current_pool_id}: unused={counts['unused']} claimed={counts['claimed']} disabled={counts['disabled']}"
-            )
-        yield event.plain_result("\n".join(lines))
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"发码库存 {pool_id}".strip(),
+                is_admin=self._is_plugin_admin(event),
+            ).reply
+        )
 
     @filter.command("查领取")
     async def command_query_claims(self, event: AstrMessageEvent, user_id: str, pool_id: str = ""):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        records = self.admin_service.query_user_claims(user_id=user_id, pool_id=pool_id)
-        yield event.plain_result(self.command_views.claim_records(records))
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"查领取 {user_id} {pool_id}".strip(),
+                is_admin=self._is_plugin_admin(event),
+            ).reply
+        )
 
     @filter.command("发码统计")
     async def command_statistics(self, event: AstrMessageEvent, pool_id: str = ""):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        stats = self.admin_service.statistics(pool_id=pool_id)
         yield event.plain_result(
-            "库存统计："
-            f"unused={stats['unused']} claimed={stats['claimed']} "
-            f"disabled={stats['disabled']} claim_records={stats['claim_records']}"
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"发码统计 {pool_id}".strip(),
+                is_admin=self._is_plugin_admin(event),
+            ).reply
         )
 
     @filter.command("导入码")
     async def command_import_codes(self, event: AstrMessageEvent):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        payload = self.command_views.parse_import_text(event.message_str)
-        if not payload.pool_id or not payload.lines:
-            yield event.plain_result("用法：/导入码 <码池ID>，并在后续行粘贴码。")
-            return
-        summary = self.admin_service.import_text_codes(pool_id=payload.pool_id, lines=payload.lines)
         yield event.plain_result(
-            f"导入完成：成功 {summary.success}，重复 {summary.duplicate}，失败 {summary.failed}。"
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=event.message_str,
+                is_admin=self._is_plugin_admin(event),
+            ).reply
         )
 
     @filter.command("导入csv")
     async def command_import_csv(self, event: AstrMessageEvent, pool_id: str, csv_path: str):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        summary = self.admin_service.import_csv_codes(pool_id=pool_id, csv_path=Path(csv_path))
         yield event.plain_result(
-            f"CSV 导入完成：成功 {summary.success}，重复 {summary.duplicate}，失败 {summary.failed}。"
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"导入csv {pool_id} {csv_path}",
+                is_admin=self._is_plugin_admin(event),
+            ).reply
         )
 
     @filter.command("导出领取记录")
@@ -179,44 +171,43 @@ class AstrBotCodeInviterPlugin(Star):
         claimed_after: str = "",
         claimed_before: str = "",
     ):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        output_path, count = self.admin_service.export_claim_records(
-            pool_id=pool_id,
-            pool_name=self.command_views.pool_name(pool_id),
-            claimed_after=claimed_after,
-            claimed_before=claimed_before,
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"导出领取记录 {pool_id} {claimed_after} {claimed_before}".strip(),
+                is_admin=self._is_plugin_admin(event),
+            ).reply
         )
-        yield event.plain_result(f"导出完成：{count} 条，文件：{output_path}")
 
     @filter.command("禁领")
     async def command_block_user(self, event: AstrMessageEvent, user_id: str, reason: str = ""):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        self.admin_service.block_user(
-            user_id=user_id,
-            reason=reason,
-            created_by=str(self._sender_id(event)),
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"禁领 {user_id} {reason}".strip(),
+                is_admin=self._is_plugin_admin(event),
+            ).reply
         )
-        yield event.plain_result(f"已禁领用户 {user_id}。")
 
     @filter.command("解禁")
     async def command_unblock_user(self, event: AstrMessageEvent, user_id: str):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        self.admin_service.unblock_user(user_id=user_id)
-        yield event.plain_result(f"已解除用户 {user_id} 的禁领状态。")
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"解禁 {user_id}",
+                is_admin=self._is_plugin_admin(event),
+            ).reply
+        )
 
     @filter.command("重置领取")
     async def command_reset_claims(self, event: AstrMessageEvent, pool_id: str, user_id: str):
-        if not self._is_plugin_admin(event):
-            yield event.plain_result("无权限执行该命令。")
-            return
-        count = self.admin_service.reset_user_claims(pool_id=pool_id, user_id=user_id)
-        yield event.plain_result(f"已重置 {user_id} 在 {pool_id} 的 {count} 条领取记录。")
+        yield event.plain_result(
+            self.handlers.handle_admin_command(
+                user_id=self._sender_id(event),
+                message=f"重置领取 {pool_id} {user_id}",
+                is_admin=self._is_plugin_admin(event),
+            ).reply
+        )
 
     def handle_group_trigger(self, *, user_id: int, group_id: int, message: str) -> dict[str, str | bool]:
         """Process a group trigger message."""

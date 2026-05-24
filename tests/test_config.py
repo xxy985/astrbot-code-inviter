@@ -25,3 +25,34 @@ def test_parse_multi_pool_config():
     assert config.export_dir == "out"
     assert config.pools["invite"].display_name == "邀请码"
     assert config.pools["invite"].group_triggers == ["领邀请码"]
+
+
+def test_parse_trigger_takeover_config():
+    config = parse_plugin_config(
+        {
+            "bot_aliases": ["秋秋", "bot"],
+            "admin_commands": {
+                "inventory": ["库存", "全部库存"],
+                "statistics": ["统计"],
+            },
+            "code_pools": {
+                "invite": {
+                    "display_name": "邀请码",
+                    "group_triggers": ["群领"],
+                    "private_triggers": ["私领"],
+                },
+                "redeem": {
+                    "display_name": "兑换码",
+                    "group_triggers": ["兑换群领"],
+                    "private_triggers": ["兑换私领"],
+                },
+            },
+        }
+    )
+
+    assert config.bot_aliases == ["秋秋", "bot"]
+    assert config.admin_commands.inventory == ["库存", "全部库存"]
+    assert config.admin_commands.statistics == ["统计"]
+    assert config.admin_commands.query_claims == ["查领取", "/查领取"]
+    assert config.pools["invite"].group_triggers == ["群领"]
+    assert config.pools["redeem"].private_triggers == ["兑换私领"]
