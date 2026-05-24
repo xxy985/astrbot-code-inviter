@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from src.config import PluginConfig
-from src.storage import CodeInviterStorage
+from .config import PluginConfig
+from .storage import CodeInviterStorage
 
 
 @dataclass(slots=True)
@@ -67,4 +67,3 @@ class FriendApprovalService:
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=UTC)
         return parsed <= datetime.now(UTC)
-

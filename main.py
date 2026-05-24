@@ -9,18 +9,32 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from src.admin_service import AdminService
-from src.claim_service import ClaimService
-from src.command_views import CommandViews
-from src.config import parse_plugin_config
-from src.friend_service import FriendApprovalService
-from src.friend_request_adapter import (
-    approve_onebot_friend_request,
-    extract_onebot_friend_request,
-)
-from src.handlers import PluginHandlers
-from src.storage import CodeInviterStorage
-from src.trigger_service import GroupTriggerService
+if __package__:
+    from .src.admin_service import AdminService
+    from .src.claim_service import ClaimService
+    from .src.command_views import CommandViews
+    from .src.config import parse_plugin_config
+    from .src.friend_service import FriendApprovalService
+    from .src.friend_request_adapter import (
+        approve_onebot_friend_request,
+        extract_onebot_friend_request,
+    )
+    from .src.handlers import PluginHandlers
+    from .src.storage import CodeInviterStorage
+    from .src.trigger_service import GroupTriggerService
+else:
+    from src.admin_service import AdminService
+    from src.claim_service import ClaimService
+    from src.command_views import CommandViews
+    from src.config import parse_plugin_config
+    from src.friend_service import FriendApprovalService
+    from src.friend_request_adapter import (
+        approve_onebot_friend_request,
+        extract_onebot_friend_request,
+    )
+    from src.handlers import PluginHandlers
+    from src.storage import CodeInviterStorage
+    from src.trigger_service import GroupTriggerService
 
 
 class AstrBotCodeInviterPlugin(Star):

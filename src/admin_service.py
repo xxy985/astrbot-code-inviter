@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.storage import CodeInviterStorage
+from .storage import CodeInviterStorage
 
 
 @dataclass(slots=True)

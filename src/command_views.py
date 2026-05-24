@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.admin_service import ClaimRecordSummary
-from src.config import PluginConfig
+from .admin_service import ClaimRecordSummary
+from .config import PluginConfig
 
 
 @dataclass(slots=True)

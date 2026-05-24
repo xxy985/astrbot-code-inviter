@@ -6,8 +6,8 @@ import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from src.config import CodePoolConfig, PluginConfig
-from src.storage import CodeInviterStorage
+from .config import CodePoolConfig, PluginConfig
+from .storage import CodeInviterStorage
 
 
 @dataclass(slots=True)
@@ -60,4 +60,3 @@ class GroupTriggerService:
 
     def _new_token(self) -> str:
         return f"{secrets.randbelow(1_000_000):06d}"
-

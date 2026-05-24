@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.admin_service import AdminService
-from src.claim_service import ClaimService
-from src.friend_service import FriendApprovalService
-from src.trigger_service import GroupTriggerService
+from .admin_service import AdminService
+from .claim_service import ClaimService
+from .friend_service import FriendApprovalService
+from .trigger_service import GroupTriggerService
 
 
 @dataclass(slots=True)
@@ -74,4 +74,3 @@ class PluginHandlers:
     def handle_friend_request(self, *, user_id: int, comment: str) -> FriendRequestView:
         result = self.friend_service.evaluate_request(user_id=user_id, comment=comment)
         return FriendRequestView(result.approved, result.reason, result.pool_id, result.flow_id)
-

@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from src.config import CodePoolConfig, PluginConfig
-from src.storage import CodeInviterStorage
+from .config import CodePoolConfig, PluginConfig
+from .storage import CodeInviterStorage
 
 
 @dataclass(slots=True)
